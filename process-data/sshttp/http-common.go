@@ -3,6 +3,7 @@ package sshttp
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -22,7 +23,7 @@ func StartServer(serviceName string, routes *mux.Router, port string, adminRoute
 	var wg sync.WaitGroup
 	wg.Add(2)
 	serverStartMessage(serviceName, port, routes)
-	serverStartMessage("Admin", adminPort, adminRoutes)
+	serverStartMessage("admin", adminPort, adminRoutes)
 	go func() {
 		defer wg.Done()
 		http.ListenAndServe(fmt.Sprintf(":%s", port), routes)
@@ -32,7 +33,7 @@ func StartServer(serviceName string, routes *mux.Router, port string, adminRoute
 		http.ListenAndServe(fmt.Sprintf(":%s", adminPort), adminRoutes)
 	}()
 	wg.Wait()
-	fmt.Printf("Server %s stopped\n", serviceName)
+	fmt.Printf("server %s stopped\n", serviceName)
 
 }
 
@@ -84,4 +85,16 @@ func AdminEndpoints(requiredList []string) (*mux.Router, error) {
 		}
 	}
 	return r, nil
+}
+
+func Ports() (string, string) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	adminPort := os.Getenv("ADMIN_PORT")
+	if adminPort == "" {
+		adminPort = "8081"
+	}
+	return port, adminPort
 }

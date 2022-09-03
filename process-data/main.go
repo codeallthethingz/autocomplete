@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/gorilla/mux"
 	"github.com/searchspring/autocomplete/process-data/sshttp"
 )
+
+var dataLocation string = ""
+var communicationChannel chan string = make(chan string, 2)
 
 func main() {
 	routes := defineEndpoints()
@@ -16,33 +18,28 @@ func main() {
 		fmt.Printf("Error: %v", err)
 		os.Exit(1)
 	}
-	port, adminPort := ports()
-	sshttp.StartServer("autocomplete Data", routes, port, adminRoutes, adminPort)
+	port, adminPort := sshttp.Ports()
+
+	if err := setupGlobalConfig(); err != nil {
+		fmt.Printf("Error: %v", err)
+		os.Exit(1)
+	}
+	sshttp.StartServer("autocomplete data", routes, port, adminRoutes, adminPort)
 
 }
 
-func ports() (string, string) {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+func setupGlobalConfig() error {
+	dataLocation = os.Getenv("DATA_LOCATION")
+	if dataLocation == "" {
+		return fmt.Errorf("DATA_LOCATION environment variable is required")
 	}
-	adminPort := os.Getenv("ADMIN_PORT")
-	if adminPort == "" {
-		adminPort = "8081"
-	}
-	return port, adminPort
+	return nil
 }
 
 // return gorilla mux endpoints
 func defineEndpoints() *mux.Router {
 	r := mux.NewRouter()
-	defineEndpointData(r)
+	r.HandleFunc("/data/{siteId}", dataHandler).Methods("POST")
+	r.HandleFunc("/autocomplete/{siteId}", autocompleteHandler).Methods("GET")
 	return r
-}
-
-// defineEndpointData defines the data endpoint
-func defineEndpointData(r *mux.Router) {
-	r.HandleFunc("/data", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, world!"))
-	})
 }
