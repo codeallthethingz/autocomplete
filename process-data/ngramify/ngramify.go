@@ -31,23 +31,23 @@ func New(w io.Writer) (*Ngramify, error) {
 
 // ngramify takes a string and write a all the ngrams to the writer
 func (n *Ngramify) Ngramify(s string, i int) error {
+	ngrams := []string{}
 	sentences := n.sentenceTokenizer.Tokenize(s)
 	for _, sentence := range sentences {
 		text := strings.ReplaceAll(sentence.Text, ",", "")
 		text = strings.ReplaceAll(text, ".", "")
 		words := strings.Fields(text)
 		for l, word := range words {
-			if _, err := n.w.Write([]byte(word + "\n")); err != nil {
-				return err
-			}
+			ngrams = append(ngrams, word)
 			ngram := word
 			for j := 1; j < i && len(words) > l+j; j++ {
 				ngram += " " + words[l+j]
-				if _, err := n.w.Write([]byte(ngram + "\n")); err != nil {
-					return err
-				}
+				ngrams = append(ngrams, ngram)
+
 			}
 		}
 	}
-	return nil
+	b := []byte(strings.Join(ngrams, "\n"))
+	_, err := n.w.Write(b)
+	return err
 }
