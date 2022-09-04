@@ -10,19 +10,12 @@ import (
 
 func TestSimpleArray(t *testing.T) {
 	input := []string{"a", "c", "b", "a"}
-	expected := []string{"a", "a", "b", "c"}
-	actual := sortArray(t, input, false)
+	expected := []string{"2 a", "1 b", "1 c"}
+	actual := sortArray(t, input)
 	require.Equal(t, expected, actual)
 }
 
-func TestSimpleArrayDedup(t *testing.T) {
-	input := []string{"a", "c", "b", "a"}
-	expected := []string{"a", "b", "c"}
-	actual := sortArray(t, input, true)
-	require.Equal(t, expected, actual)
-}
-
-func sortArray(t *testing.T, input []string, dedup bool) []string {
+func sortArray(t *testing.T, input []string) []string {
 	buf := &bytes.Buffer{}
 	stringChan := make(chan string, 2)
 	go func() {
@@ -31,7 +24,7 @@ func sortArray(t *testing.T, input []string, dedup bool) []string {
 		}
 		close(stringChan)
 	}()
-	err := Sort(stringChan, buf, dedup)
+	err := Sort(stringChan, buf)
 	require.NoError(t, err)
 	actual := strings.Split(strings.TrimSpace(buf.String()), "\n")
 	return actual

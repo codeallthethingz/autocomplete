@@ -27,7 +27,8 @@ func TestIntegration(t *testing.T) {
 		close(stringChan)
 	}()
 	buf.Reset()
-	err = disksort.Sort(stringChan, buf, true)
+	err = disksort.Sort(stringChan, buf)
 	require.NoError(t, err)
-	require.Equal(t, "you might expect", strings.Split(buf.String(), "\n")[51])
+	require.Equal(t, "1 you might expect", strings.Split(buf.String(), "\n")[51])
+	t.Fail()
 }

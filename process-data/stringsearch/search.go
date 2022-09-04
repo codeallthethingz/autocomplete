@@ -2,7 +2,6 @@ package stringsearch
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"sort"
 	"strconv"
@@ -16,8 +15,8 @@ type AutocompleteTrie struct {
 }
 
 type AutocompleteTrieValue struct {
-	Value int
-	Text  string
+	Value int    `json:"value"` // ignore value in json
+	Text  string `json:"text"`
 }
 
 func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteTrie {
@@ -50,7 +49,6 @@ func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteT
 				currentValue = currentValue[:maxValuesPerEntry]
 			}
 			trie.Put(text[0:i], currentValue)
-			fmt.Printf("putting %s, %v\n", text[0:i], currentValue)
 		}
 	}
 

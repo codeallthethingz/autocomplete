@@ -50,7 +50,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// create data file
-	dataFile := dataLocation + "/" + siteID + ".txt"
+	dataFile := dataLocation + "/" + siteID
 	f, err := os.Create(dataFile)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -59,7 +59,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 
 	writer := bufio.NewWriter(f)
-	err = disksort.Sort(stringChan, writer, true)
+	err = disksort.Sort(stringChan, writer)
 	writer.Flush()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -68,7 +68,7 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 
 	// send success code
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`"{ "status": "success", "message": "data processed" }"`))
+	w.Write([]byte(`{"status":"success","message":"data processed"}`))
 	communicationChannel <- siteID
 
 }
