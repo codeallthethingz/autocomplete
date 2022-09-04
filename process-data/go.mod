@@ -3,6 +3,7 @@ module github.com/searchspring/autocomplete/process-data
 go 1.19
 
 require (
+	github.com/dghubble/trie v0.0.0-20220811160003-18e0eff3ca7b
 	github.com/gorilla/mux v1.8.0
 	github.com/lanrat/extsort v1.0.0
 	github.com/stretchr/testify v1.8.0

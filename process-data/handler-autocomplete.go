@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -9,7 +10,7 @@ import (
 func autocompleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	siteID := vars["siteId"]
-
+	fmt.Println("siteId: ", siteID)
 	// read q query parameter
 	q := r.URL.Query().Get("q")
 	if q == "" {
