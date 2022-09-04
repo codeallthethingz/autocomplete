@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Autocomplete Reference App</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Autocomplete Reference App</h1>
+        <form class="form-horizontal" id="siteIdForm" style="display:none" action="/">
+            <div class="form-group">
+                <input type="text" class="form-control" id="siteId" name="siteId" placeholder="Enter Site ID">
+            </div>
+        </form>
+        <form class="form-horizontal" id="autocompleteForm" style="display:none">
+            <div class="form-group">
+                <input type="text" id="autocomplete" class="form-control" placeholder="search for anything"
+                    autocomplete="off">
+            </div>
+        </form>
+    </div>
+</body>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script>
+    // if q parameter is not set then hide the autocomplete form and show the siteId form
+    if (window.location.search.indexOf('siteId') === -1) {
+        $('#siteIdForm').show();
+        $('#siteId').focus();
+        $('#autocompleteForm').hide();
+    } else {
+        $('#siteIdForm').hide();
+        $('#autocompleteForm').show();
+        $('#autocomplete').focus();
+    }
+
+    // prevent autocomplete form submission
+    $('#autocompleteForm').submit(function (e) {
+        e.preventDefault();
+    });
+    // send autocomplete keystrokes to the server and display the results below the form
+    $('#autocomplete').on('keyup', function () {
+        var query = $(this).val();
+        var siteId = getParameterByName('siteId');
+        $.ajax({
+            url: '/autocomplete/' + siteId,
+            data: {
+                q: query
+            },
+            success: function (res) {
+                $('#results').remove();
+                var data = res.data
+                if (!data || data.length == 0) {
+                    return
+                }
+                // remove results from previous query
+                // create a new results div
+                var results = $('<pre id="results"></pre>');
+                // add each result to the results div as json
+                data.forEach(function (result) {
+                    results.append(JSON.stringify(result) + '\n');
+                });
+                // add the results div to the page below the form
+                $('#autocompleteForm').after(results);
+
+            }
+        });
+    });
+
+    function getParameterByName(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+    }
+</script>
+
+</html>

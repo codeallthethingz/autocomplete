@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/searchspring/autocomplete/process-data/disksort"
-	"github.com/searchspring/autocomplete/process-data/ngramify"
+	"github.com/searchspring/autocomplete/disksort"
+	"github.com/searchspring/autocomplete/ngramify"
 )
 
 func dataHandler(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +69,6 @@ func dataHandler(w http.ResponseWriter, r *http.Request) {
 	// send success code
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"success","message":"data processed"}`))
-	communicationChannel <- siteID
+	reloadData(siteID)
 
 }

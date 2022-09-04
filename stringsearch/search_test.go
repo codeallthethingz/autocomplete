@@ -7,6 +7,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// test mixed case
+func TestMixedCase(t *testing.T) {
+	// create string reader
+	reader := strings.NewReader("1 Hello world\n2 help me\n3 hell freezes over\n4 heLlo kitty\n")
+	test := NewAutocompleteTrie(reader, 5)
+	values, ok := test.Find("HeLl")
+	require.True(t, ok)
+	require.Equal(t, 3, len(values))
+}
+
+// test edges
+func TestEdges(t *testing.T) {
+	// create string reader
+	reader := strings.NewReader("1 hello world")
+	test := NewAutocompleteTrie(reader, 5)
+	if _, ok := test.Find("k"); ok {
+		t.Error("should not find k")
+	}
+	if _, ok := test.Find(""); ok {
+		t.Error("should not find empty value")
+	}
+
+}
+
 // test finding a word in a string using trie
 func TestTrie(t *testing.T) {
 	// create string reader

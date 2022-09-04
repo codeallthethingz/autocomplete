@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/searchspring/autocomplete/process-data/disksort"
-	"github.com/searchspring/autocomplete/process-data/ngramify"
+	"github.com/searchspring/autocomplete/disksort"
+	"github.com/searchspring/autocomplete/ngramify"
 	"github.com/stretchr/testify/require"
 )
 

@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/searchspring/autocomplete/process-data/stringsearch"
+	"github.com/searchspring/autocomplete/stringsearch"
 )
 
 var siteID2AutocompleteTrie = make(map[string]*stringsearch.AutocompleteTrie)
@@ -38,8 +38,11 @@ func autocompleteHandler(w http.ResponseWriter, r *http.Request) {
 	autocomplete = siteID2AutocompleteTrie[siteID]
 
 	if responses, ok := autocomplete.Find(q); ok {
+		// wrap response in object
+		wrapped := map[string]interface{}{"data": responses}
 		// convert to json
-		json, err := json.Marshal(responses)
+
+		json, err := json.Marshal(wrapped)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -71,4 +74,12 @@ func emptyResponse(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("{}"))
+}
+
+func reloadData(siteID string) {
+	autocomplete, err := loadAutocomplete(siteID)
+	if err != nil {
+		return
+	}
+	siteID2AutocompleteTrie[siteID] = autocomplete
 }

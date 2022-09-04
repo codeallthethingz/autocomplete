@@ -1,15 +1,19 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/searchspring/autocomplete/process-data/sshttp"
+	"github.com/searchspring/autocomplete/sshttp"
 )
 
 var dataLocation string = ""
-var communicationChannel chan string = make(chan string, 2)
+
+//go:embed index.html
+var indexPage []byte
 
 func main() {
 	routes := defineEndpoints()
@@ -46,6 +50,10 @@ func setupGlobalConfig() error {
 // return gorilla mux endpoints
 func defineEndpoints() *mux.Router {
 	r := mux.NewRouter()
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write(indexPage)
+	}).Methods("GET")
 	r.HandleFunc("/data/{siteId}", dataHandler).Methods("POST")
 	r.HandleFunc("/autocomplete/{siteId}", autocompleteHandler).Methods("GET")
 	return r

@@ -2,6 +2,7 @@ package ngramify
 
 import (
 	"io"
+	"regexp"
 	"strings"
 
 	"gopkg.in/neurosnap/sentences.v1"
@@ -34,8 +35,13 @@ func (n *Ngramify) Ngramify(s string, i int) error {
 	ngrams := []string{}
 	sentences := n.sentenceTokenizer.Tokenize(s)
 	for _, sentence := range sentences {
-		text := strings.ReplaceAll(sentence.Text, ",", "")
-		text = strings.ReplaceAll(text, ".", "")
+		// replace all non-alphanumeric characters with spaces using a regex
+		regexp, err := regexp.Compile("[^a-zA-Z0-9^']+")
+		if err != nil {
+			return err
+		}
+		text := regexp.ReplaceAllString(sentence.Text, " ")
+
 		words := strings.Fields(text)
 		for l, word := range words {
 			ngrams = append(ngrams, word)
@@ -43,7 +49,6 @@ func (n *Ngramify) Ngramify(s string, i int) error {
 			for j := 1; j < i && len(words) > l+j; j++ {
 				ngram += " " + words[l+j]
 				ngrams = append(ngrams, ngram)
-
 			}
 		}
 	}

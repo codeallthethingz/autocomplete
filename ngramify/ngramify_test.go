@@ -27,6 +27,20 @@ func test(t *testing.T, text string) []string {
 	return strings.Split(strings.TrimSpace(buf.String()), "\n")
 }
 
+func TestBracketedText(t *testing.T) {
+	setup()
+	expected := []string{
+		"foo",
+		"foo bar",
+		"foo bar baz",
+		"bar",
+		"bar baz",
+		"baz",
+	}
+	actual := test(t, "foo (bar  baz)")
+	require.Equal(t, expected, actual)
+}
+
 func TestOneWord(t *testing.T) {
 	setup()
 	require.Equal(t, []string{"a"}, test(t, "a"))
@@ -51,9 +65,9 @@ func TestSentences(t *testing.T) {
 	setup()
 	require.Equal(t, []string{"This", "This should", "This should end",
 		"should", "should end", "end",
-		"Then", "Then start", "Then start here",
+		"then", "then start", "then start here",
 		"start", "start here",
-		"here"}, test(t, "This should end. Then start here."))
+		"here"}, test(t, "This should end. then start here."))
 }
 func TestSentenceWithAncronym(t *testing.T) {
 	setup()
