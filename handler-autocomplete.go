@@ -19,6 +19,7 @@ func autocompleteHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if q == "" {
 		emptyResponse(w)
+		return
 	}
 	var autocomplete *stringsearch.AutocompleteTrie
 	if _, ok := siteID2AutocompleteTrie[siteID]; !ok {
