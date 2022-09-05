@@ -37,7 +37,7 @@ func autocompleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	autocomplete = siteID2AutocompleteTrie[siteID]
 
-	if responses, ok := autocomplete.Find(q); ok {
+	if responses, ok := autocomplete.FindCaseAware(q); ok {
 		// wrap response in object
 		wrapped := map[string]interface{}{"data": responses}
 		// convert to json

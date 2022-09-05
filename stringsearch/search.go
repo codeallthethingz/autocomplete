@@ -32,21 +32,7 @@ func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteT
 		text := valueAndText[1]
 		// for every character in the line add it to the trie
 		for i := 1; i < len(text)+1; i++ {
-			key := strings.ToLower(text[:i])
-			if trie.Get(key) == nil {
-				trie.Put(key, []AutocompleteTrieValue{})
-			}
-			currentValue := trie.Get(key).([]AutocompleteTrieValue)
-			currentValue = append(currentValue, AutocompleteTrieValue{value, text})
-			// sort the autocompletetrievalues
-			sort.Slice(currentValue, func(i, j int) bool {
-				return currentValue[i].Value > currentValue[j].Value
-			})
-			// if max values per entry is set, only keep the first N
-			if maxValuesPerEntry > 0 && len(currentValue) > maxValuesPerEntry {
-				currentValue = currentValue[:maxValuesPerEntry]
-			}
-			trie.Put(key, currentValue)
+			addAndSortValue(trie, strings.ToLower(text[:i]), AutocompleteTrieValue{value, text}, maxValuesPerEntry)
 		}
 	}
 
@@ -55,6 +41,23 @@ func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteT
 	}
 	return at
 
+}
+
+func addAndSortValue(trie *trie.RuneTrie, key string, newValue AutocompleteTrieValue, maxValuesPerEntry int) {
+	if trie.Get(key) == nil {
+		trie.Put(key, []AutocompleteTrieValue{})
+	}
+	currentValue := trie.Get(key).([]AutocompleteTrieValue)
+	currentValue = append(currentValue, newValue)
+	// sort the autocompletetrievalues
+	sort.Slice(currentValue, func(i, j int) bool {
+		return currentValue[i].Value > currentValue[j].Value
+	})
+	// if max values per entry is set, only keep the first N
+	if maxValuesPerEntry > 0 && len(currentValue) > maxValuesPerEntry {
+		currentValue = currentValue[:maxValuesPerEntry]
+	}
+	trie.Put(key, currentValue)
 }
 
 func (at *AutocompleteTrie) Find(prefix string) ([]AutocompleteTrieValue, bool) {
@@ -68,4 +71,28 @@ func (at *AutocompleteTrie) Find(prefix string) ([]AutocompleteTrieValue, bool) 
 		return nil, false
 	}
 	return value.([]AutocompleteTrieValue), true
+}
+
+func (at *AutocompleteTrie) FindCaseAware(prefix string) ([]AutocompleteTrieValue, bool) {
+	prefix = strings.TrimSpace(prefix)
+
+	if prefix == "" {
+		return nil, false
+	}
+
+	// find all values for the lowercase prefix and then sort by the original prefix case
+
+	if values, ok := at.Find(strings.ToLower(prefix)); ok {
+		// copy values array
+		valuesCopy := make([]AutocompleteTrieValue, len(values))
+		copy(valuesCopy, values)
+
+		sort.Slice(valuesCopy, func(i, j int) bool {
+			// if the case matches the prefix thats better
+			return strings.HasPrefix(valuesCopy[i].Text, prefix)
+		})
+		return valuesCopy, true
+	} else {
+		return nil, false
+	}
 }
