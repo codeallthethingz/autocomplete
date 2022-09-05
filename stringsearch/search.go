@@ -15,8 +15,21 @@ type AutocompleteTrie struct {
 }
 
 type AutocompleteTrieValue struct {
-	Value int    `json:"value"` // ignore value in json
+	Count int    `json:"count"`
 	Text  string `json:"text"`
+}
+
+// config options
+type Config struct {
+	RelevanceCaseAware     bool
+	RelevanceExactMatch    bool
+	RecallTrimLeadingSpace bool
+}
+
+var DefaultConfig = Config{
+	RelevanceCaseAware:     true,
+	RelevanceExactMatch:    true,
+	RecallTrimLeadingSpace: true,
 }
 
 func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteTrie {
@@ -51,7 +64,7 @@ func addAndSortValue(trie *trie.RuneTrie, key string, newValue AutocompleteTrieV
 	currentValue = append(currentValue, newValue)
 	// sort the autocompletetrievalues
 	sort.Slice(currentValue, func(i, j int) bool {
-		return currentValue[i].Value > currentValue[j].Value
+		return currentValue[i].Count > currentValue[j].Count
 	})
 	// if max values per entry is set, only keep the first N
 	if maxValuesPerEntry > 0 && len(currentValue) > maxValuesPerEntry {
@@ -61,59 +74,63 @@ func addAndSortValue(trie *trie.RuneTrie, key string, newValue AutocompleteTrieV
 }
 
 func (at *AutocompleteTrie) Find(prefix string) ([]AutocompleteTrieValue, bool) {
-	prefix = strings.ToLower(strings.TrimSpace(prefix))
-
-	if prefix == "" {
-		return nil, false
-	}
-	value := at.trie.Get(prefix)
-	if value == nil {
-		return nil, false
-	}
-	return value.([]AutocompleteTrieValue), true
+	return at.FindWithConfig(prefix, DefaultConfig)
 }
 
-func (at *AutocompleteTrie) FindCaseAware(prefix string) ([]AutocompleteTrieValue, bool) {
-	prefix = strings.TrimSpace(prefix)
+func (at *AutocompleteTrie) FindWithConfig(prefix string, config Config) ([]AutocompleteTrieValue, bool) {
+	if config.RecallTrimLeadingSpace {
+		if strings.HasSuffix(prefix, " ") {
+			prefix = strings.TrimSpace(prefix)
+			prefix += " "
+		} else {
+			prefix = strings.TrimSpace(prefix)
+		}
+	}
 
-	if prefix == "" {
+	if strings.TrimSpace(prefix) == "" {
 		return nil, false
 	}
 
-	// find all values for the lowercase prefix and then sort by the original prefix case
-
-	if values, ok := at.Find(strings.ToLower(prefix)); ok {
+	values := at.trie.Get(strings.ToLower(prefix))
+	if values != nil {
 		// copy values array
-		valuesCopy := make([]AutocompleteTrieValue, len(values))
-		copy(valuesCopy, values)
+		valuesCopy := make([]AutocompleteTrieValue, len(values.([]AutocompleteTrieValue)))
+		copy(valuesCopy, values.([]AutocompleteTrieValue))
 		sort.Slice(valuesCopy, func(i, j int) bool {
 			iPoints := 0 // points for the i value
 			jPoints := 0 // points for the j value
 
-			if strings.HasPrefix(valuesCopy[i].Text, prefix) {
-				iPoints += 1
+			// case sensitive prefix points
+			if config.RelevanceCaseAware {
+				if strings.HasPrefix(valuesCopy[i].Text, prefix) {
+					iPoints += 1
+				}
+				if strings.HasPrefix(valuesCopy[j].Text, prefix) {
+					jPoints += 1
+				}
 			}
-			if strings.HasPrefix(valuesCopy[j].Text, prefix) {
-				jPoints += 1
-			}
-			// if prefix string case insensitive matches add a point
+
+			// case insensitive exact match
 			if strings.EqualFold(valuesCopy[i].Text, prefix) {
-				iPoints += 3
+				iPoints += 2
 			}
 			if strings.EqualFold(valuesCopy[j].Text, prefix) {
-				jPoints += 3
+				jPoints += 2
 			}
-			// if prefix string case sensitive matches add a point
-			if valuesCopy[i].Text == prefix {
-				iPoints += 1
-			}
-			if valuesCopy[j].Text == prefix {
-				jPoints += 1
+
+			// case sensitive exact match points
+			if config.RelevanceCaseAware {
+				if valuesCopy[i].Text == prefix {
+					iPoints += 3
+				}
+				if valuesCopy[j].Text == prefix {
+					jPoints += 3
+				}
 			}
 
 			// if the points are equal sort by value
 			if iPoints == jPoints {
-				return valuesCopy[i].Value < valuesCopy[j].Value
+				return valuesCopy[i].Count > valuesCopy[j].Count
 			}
 			// sort by points
 			return iPoints > jPoints

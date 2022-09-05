@@ -40,7 +40,7 @@ func setupGlobalConfig() error {
 	// create data directory if it doesn't exist
 	if _, err := os.Stat(dataLocation); os.IsNotExist(err) {
 		if err := os.MkdirAll(dataLocation, 0755); err != nil {
-			return fmt.Errorf("Error creating data directory: %v", err)
+			return fmt.Errorf("error creating data directory: %v", err)
 		}
 	}
 

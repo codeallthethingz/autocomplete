@@ -90,11 +90,11 @@ func AdminEndpoints(requiredList []string) (*mux.Router, error) {
 func Ports() (string, string) {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		panic("PORT env var not set")
 	}
 	adminPort := os.Getenv("ADMIN_PORT")
 	if adminPort == "" {
-		adminPort = "8081"
+		panic("ADMIN_PORT env var not set")
 	}
 	return port, adminPort
 }
