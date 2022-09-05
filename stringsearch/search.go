@@ -26,11 +26,7 @@ type Config struct {
 	RecallTrimLeadingSpace bool
 }
 
-var DefaultConfig = Config{
-	RelevanceCaseAware:     true,
-	RelevanceExactMatch:    true,
-	RecallTrimLeadingSpace: true,
-}
+var DefaultConfig = Config{true, true, true}
 
 func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteTrie {
 	trie := trie.NewRuneTrie()
