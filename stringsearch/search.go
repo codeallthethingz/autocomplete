@@ -86,10 +86,37 @@ func (at *AutocompleteTrie) FindCaseAware(prefix string) ([]AutocompleteTrieValu
 		// copy values array
 		valuesCopy := make([]AutocompleteTrieValue, len(values))
 		copy(valuesCopy, values)
-
 		sort.Slice(valuesCopy, func(i, j int) bool {
-			// if the case matches the prefix thats better
-			return strings.HasPrefix(valuesCopy[i].Text, prefix)
+			iPoints := 0 // points for the i value
+			jPoints := 0 // points for the j value
+
+			if strings.HasPrefix(valuesCopy[i].Text, prefix) {
+				iPoints += 1
+			}
+			if strings.HasPrefix(valuesCopy[j].Text, prefix) {
+				jPoints += 1
+			}
+			// if prefix string case insensitive matches add a point
+			if strings.EqualFold(valuesCopy[i].Text, prefix) {
+				iPoints += 3
+			}
+			if strings.EqualFold(valuesCopy[j].Text, prefix) {
+				jPoints += 3
+			}
+			// if prefix string case sensitive matches add a point
+			if valuesCopy[i].Text == prefix {
+				iPoints += 1
+			}
+			if valuesCopy[j].Text == prefix {
+				jPoints += 1
+			}
+
+			// if the points are equal sort by value
+			if iPoints == jPoints {
+				return valuesCopy[i].Value < valuesCopy[j].Value
+			}
+			// sort by points
+			return iPoints > jPoints
 		})
 		return valuesCopy, true
 	} else {
