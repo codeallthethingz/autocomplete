@@ -12,6 +12,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/liamzdenek/go-spellcheck v0.0.0-20150330155621-169d6d29ba54 // indirect
 	github.com/neurosnap/sentences v1.0.12 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde // indirect

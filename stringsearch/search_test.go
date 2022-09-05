@@ -7,6 +7,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCorrect(t *testing.T) {
+	// create string reader
+	reader := strings.NewReader("1 hello world\n2 help me\n3 hell freezes over\n4 hello kitty\n5 hello darkness my old friend\n6 hard to say")
+	test := NewAutocompleteTrie(reader, 5)
+	values, ok := test.FindWithConfig("helo", DefaultConfig)
+	require.True(t, ok)
+	require.Equal(t, []string{"hello world", "hello kitty", "hello darkness my old friend"}, []string{values[0].Text, values[1].Text, values[2].Text})
+}
+
+// test spell correct where correction is underneath original word relevance
+func TestSpellCorrect(t *testing.T) {
+	// create string reader
+	reader := strings.NewReader("1 helo sun\n3 hello world")
+	test := NewAutocompleteTrie(reader, 5)
+	values, ok := test.FindWithConfig("helo", DefaultConfig)
+	require.True(t, ok)
+	require.Equal(t, []string{"helo sun", "hello world"}, []string{values[0].Text, values[1].Text})
+}
+
 // test whitespace left removal
 func TestWhitespaceLeft(t *testing.T) {
 	// create string reader

@@ -6,8 +6,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/dghubble/trie"
+	spellcheck "github.com/liamzdenek/go-spellcheck"
 )
 
 type AutocompleteTrie struct {
@@ -24,9 +26,10 @@ type Config struct {
 	RelevanceCaseAware     bool
 	RelevanceExactMatch    bool
 	RecallTrimLeadingSpace bool
+	RecallSpellCorrection  bool
 }
 
-var DefaultConfig = Config{true, true, true}
+var DefaultConfig = Config{true, true, true, true}
 
 func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteTrie {
 	trie := trie.NewRuneTrie()
@@ -74,6 +77,63 @@ func (at *AutocompleteTrie) Find(prefix string) ([]AutocompleteTrieValue, bool) 
 }
 
 func (at *AutocompleteTrie) FindWithConfig(prefix string, config Config) ([]AutocompleteTrieValue, bool) {
+	waitGroup := sync.WaitGroup{}
+	waitGroup.Add(1)
+
+	// excute search in a goroutine for the main search
+	values := []AutocompleteTrieValue{}
+	go func() {
+		defer waitGroup.Done()
+		if v, ok := at.executeSearch(prefix, config); ok {
+			values = append(values, v...)
+		}
+	}()
+
+	correctedValues := []AutocompleteTrieValue{}
+	if config.RecallSpellCorrection {
+		correctTerms := generateCorrectedTerms(prefix, 3)
+		waitGroup.Add(len(correctTerms))
+		for _, corrected := range correctTerms {
+			go func() {
+				defer waitGroup.Done()
+				// execute search for the spell correction
+				if v, ok := at.executeSearch(corrected, config); ok {
+					correctedValues = append(correctedValues, v...)
+				}
+			}()
+		}
+	}
+
+	// wait for all goroutines to finish
+	waitGroup.Wait()
+
+	// sort the corrected values by count
+	sort.Slice(correctedValues, func(i, j int) bool {
+		return correctedValues[i].Count > correctedValues[j].Count
+	})
+
+	// truncate correctedValues to max 10
+	if len(correctedValues) > 10 {
+		correctedValues = correctedValues[:10]
+	}
+
+	// append the corrected values to the main search
+	values = append(values, correctedValues...)
+
+	return values, true
+}
+
+func generateCorrectedTerms(prefix string, max int) []string {
+	// generate corrected terms using liamzdenek's go-spellchecker
+	dict := spellcheck.NewDict()
+	err := dict.TrainFile("big.txt")
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func (at *AutocompleteTrie) executeSearch(prefix string, config Config) ([]AutocompleteTrieValue, bool) {
 	if config.RecallTrimLeadingSpace {
 		if strings.HasSuffix(prefix, " ") {
 			prefix = strings.TrimSpace(prefix)
