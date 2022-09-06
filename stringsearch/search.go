@@ -9,11 +9,12 @@ import (
 	"sync"
 
 	"github.com/dghubble/trie"
-	spellcheck "github.com/liamzdenek/go-spellcheck"
+	"github.com/sajari/fuzzy"
 )
 
 type AutocompleteTrie struct {
-	trie *trie.RuneTrie
+	trie  *trie.RuneTrie
+	model *fuzzy.Model
 }
 
 type AutocompleteTrieValue struct {
@@ -33,6 +34,10 @@ var DefaultConfig = Config{true, true, true, true}
 
 func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteTrie {
 	trie := trie.NewRuneTrie()
+	model := fuzzy.NewModel()
+	model.SetDepth(6)
+	model.SetThreshold(1)
+	trainingSet := []string{}
 	// read lines
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
@@ -42,14 +47,22 @@ func NewAutocompleteTrie(reader io.Reader, maxValuesPerEntry int) *AutocompleteT
 		// convert value to int atoi
 		value, _ := strconv.Atoi(valueAndText[0])
 		text := valueAndText[1]
+		// add each word in text to the training set
+		words := strings.Split(strings.ToLower(text), " ")
+		if len(words) > 1 {
+			trainingSet = append(trainingSet, words...)
+		}
 		// for every character in the line add it to the trie
 		for i := 1; i < len(text)+1; i++ {
 			addAndSortValue(trie, strings.ToLower(text[:i]), AutocompleteTrieValue{value, text}, maxValuesPerEntry)
 		}
 	}
 
+	model.Train(trainingSet)
+
 	at := &AutocompleteTrie{
-		trie: trie,
+		trie:  trie,
+		model: model,
 	}
 	return at
 
@@ -91,46 +104,90 @@ func (at *AutocompleteTrie) FindWithConfig(prefix string, config Config) ([]Auto
 
 	correctedValues := []AutocompleteTrieValue{}
 	if config.RecallSpellCorrection {
-		correctTerms := generateCorrectedTerms(prefix, 3)
-		waitGroup.Add(len(correctTerms))
-		for _, corrected := range correctTerms {
-			go func() {
+		correctedTerms := at.generateCorrectedTerms(prefix, 10)
+		waitGroup.Add(len(correctedTerms))
+		for _, corrected := range correctedTerms {
+			go func(corrected string) {
 				defer waitGroup.Done()
 				// execute search for the spell correction
 				if v, ok := at.executeSearch(corrected, config); ok {
 					correctedValues = append(correctedValues, v...)
 				}
-			}()
+			}(corrected)
 		}
 	}
 
 	// wait for all goroutines to finish
 	waitGroup.Wait()
 
-	// sort the corrected values by count
-	sort.Slice(correctedValues, func(i, j int) bool {
-		return correctedValues[i].Count > correctedValues[j].Count
-	})
+	if len(values) == 0 {
+		// sort the corrected values by count
+		sort.Slice(correctedValues, func(i, j int) bool {
+			return correctedValues[i].Count > correctedValues[j].Count
+		})
 
-	// truncate correctedValues to max 10
-	if len(correctedValues) > 10 {
-		correctedValues = correctedValues[:10]
+		// dedup the corrected values
+		seen := map[string]bool{}
+		dedupedCorrectedValues := []AutocompleteTrieValue{}
+		for _, v := range correctedValues {
+			if _, ok := seen[v.Text]; !ok {
+				seen[v.Text] = true
+
+				dedupedCorrectedValues = append(dedupedCorrectedValues, v)
+			}
+		}
+
+		// truncate deduped to max 10
+		if len(dedupedCorrectedValues) > 10 {
+			dedupedCorrectedValues = dedupedCorrectedValues[:10]
+		}
+
+		// append the deduped values to the main search
+		values = append(values, dedupedCorrectedValues...)
 	}
-
-	// append the corrected values to the main search
-	values = append(values, correctedValues...)
-
+	// if empty return false
+	if len(values) == 0 {
+		return nil, false
+	}
 	return values, true
 }
 
-func generateCorrectedTerms(prefix string, max int) []string {
-	// generate corrected terms using liamzdenek's go-spellchecker
-	dict := spellcheck.NewDict()
-	err := dict.TrainFile("big.txt")
-	if err != nil {
-		panic(err)
+var alreadyCorrected map[string]string = map[string]string{}
+
+func (at *AutocompleteTrie) generateCorrectedTerms(searchTerms string, max int) []string {
+	results := []string{searchTerms}
+	words := strings.SplitN(searchTerms, " ", 3)
+	for i := 0; i < len(words); i++ {
+		corrected := ""
+		for j := 0; j < i+1; j++ {
+			lowerWord := strings.ToLower(words[j])
+			if _, ok := alreadyCorrected[lowerWord]; !ok {
+				alreadyCorrected[lowerWord] = at.model.SpellCheck(lowerWord)
+			}
+			corrected += alreadyCorrected[lowerWord] + " "
+		}
+		for j := i + 1; j < len(words); j++ {
+			corrected += words[j] + " "
+		}
+		results = append(results, strings.TrimSpace(corrected))
 	}
 
+	// dedup the results
+	seen := map[string]bool{}
+	dedupedResults := []string{}
+	for _, v := range results {
+		if _, ok := seen[v]; !ok {
+			seen[v] = true
+			dedupedResults = append(dedupedResults, v)
+		}
+	}
+
+	// truncate deduped to max
+	if len(dedupedResults) > max {
+		dedupedResults = dedupedResults[:max]
+	}
+
+	return dedupedResults
 }
 
 func (at *AutocompleteTrie) executeSearch(prefix string, config Config) ([]AutocompleteTrieValue, bool) {
